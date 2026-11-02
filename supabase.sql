@@ -67,6 +67,7 @@ create table if not exists public.security_deposits (
   event_id uuid not null unique references public.events(id) on delete restrict,
   amount numeric(14, 2) not null check (amount > 0),
   damage_deduction numeric(14, 2) not null default 0 check (damage_deduction >= 0 and damage_deduction <= amount),
+  damage_items jsonb not null default '[]'::jsonb,
   damage_notes text,
   status text not null default 'Tersimpan',
   deposited_at date not null default current_date,
@@ -95,6 +96,10 @@ alter table public.events add constraint events_location_zone_fee_check check (
 alter table public.security_deposits drop constraint if exists security_deposits_damage_deduction_check;
 alter table public.security_deposits add constraint security_deposits_damage_deduction_check
   check (damage_deduction >= 0 and damage_deduction <= amount);
+alter table public.security_deposits add column if not exists damage_items jsonb not null default '[]'::jsonb;
+alter table public.security_deposits drop constraint if exists security_deposits_damage_items_array_check;
+alter table public.security_deposits add constraint security_deposits_damage_items_array_check
+  check (jsonb_typeof(damage_items) = 'array');
 alter table public.security_deposits drop constraint if exists security_deposits_status_check;
 alter table public.security_deposits add constraint security_deposits_status_check
   check (status in ('Tersimpan', 'Dikembalikan'));
