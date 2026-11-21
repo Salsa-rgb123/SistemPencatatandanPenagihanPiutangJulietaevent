@@ -1010,6 +1010,7 @@ function newEventForm() {
     checkbox.addEventListener('change', () => {
       card.classList.toggle('selected', checkbox.checked);
       card.querySelector('.service-price input').disabled = !checkbox.checked;
+      updateServiceSelectionValidity();
       updateEventTotal();
     });
     card.addEventListener('click', event => {
@@ -1018,10 +1019,17 @@ function newEventForm() {
       checkbox.dispatchEvent(new Event('change', { bubbles: true }));
     });
   });
+  modalLayer.querySelector('.service-card input[type="checkbox"]').required = true;
+  updateServiceSelectionValidity();
   modalLayer.querySelectorAll('.service-price input').forEach(input => input.addEventListener('input', updateEventTotal));
   modalLayer.querySelector('#field-location_zone').addEventListener('change', updateEventTotal);
   modalLayer.querySelector('#field-duration_days').addEventListener('change', updateEventTotal);
   updateEventTotal();
+}
+function updateServiceSelectionValidity() {
+  const checkboxes = [...modalLayer.querySelectorAll('.service-card input[type="checkbox"]')];
+  if (!checkboxes.length) return;
+  checkboxes[0].setCustomValidity(checkboxes.some(checkbox => checkbox.checked) ? '' : 'Pilih setidaknya satu layanan sebelum menyimpan event.');
 }
 function updateEventTotal() {
   const form = document.querySelector('#data-form');
@@ -1042,6 +1050,11 @@ function newReceivableForm() {
     const selectedEvent = useData().events.find(item => item.id === event.target.value);
     if (selectedEvent) modalLayer.querySelector('#field-total_amount').value = String(selectedEvent.budget);
   });
+  const firstDeposit = modalLayer.querySelector('#field-first_deposit');
+  const dueDate = modalLayer.querySelector('#field-due_date');
+  const updateDueDateRequirement = () => { dueDate.required = Number(firstDeposit.value) > 0; };
+  firstDeposit.addEventListener('input', updateDueDateRequirement);
+  updateDueDateRequirement();
 }
 function newPaymentForm() {
   const deposits = useData().deposits.filter(item => !depositPaid(item) && item.status !== 'Dibatalkan');
@@ -1113,6 +1126,7 @@ function updateRefundTotal() {
 async function submitForm(event) {
   event.preventDefault();
   const form = event.target;
+  if (!form.reportValidity()) return;
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
   const paidDepositId = payload.deposit_id ? String(payload.deposit_id) : '';
@@ -1140,7 +1154,7 @@ async function submitForm(event) {
       showToast('Data berhasil disimpan ke Supabase.');
     }
   } catch (error) {
-    showToast(error.message || 'Tidak dapat menyimpan data.');
+    showToast(error.message || 'Tidak dapat menyimpan data.', 'error');
     button.disabled = false;
     button.textContent = 'Coba lagi';
   }
@@ -1283,7 +1297,15 @@ async function loadData() {
   ]);
   return { clients, events, receivables, deposits, securityDeposits };
 }
-function showToast(message) { const toast = document.querySelector('#toast'); toast.textContent = message; toast.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove('show'), 3800); }
+function showToast(message, type = 'info') {
+  const toast = document.querySelector('#toast');
+  toast.textContent = message;
+  toast.classList.toggle('error', type === 'error');
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove('show'), 5000);
+}
 async function publishInvoice(id) {
   try {
     await supabaseRequest('receivables', `id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: { status: 'Belum dibayar' } });
@@ -1359,6 +1381,23 @@ document.addEventListener('click', event => {
   if (action) { actionClick(action.dataset.action, action.dataset.id, action.dataset.table); return; }
   if (event.target === modalLayer) modalLayer.hidden = true;
 });
+let pendingInvalidControl = null;
+document.addEventListener('invalid', event => {
+  const control = event.target;
+  if (!control.form || control.form.id !== 'data-form') return;
+  if (pendingInvalidControl) return;
+  pendingInvalidControl = control;
+  setTimeout(() => {
+    const invalidControl = pendingInvalidControl;
+    pendingInvalidControl = null;
+    const label = invalidControl.id ? invalidControl.form.querySelector(`label[for="${invalidControl.id}"]`) : invalidControl.closest('label');
+    const name = label?.textContent.replace(/\s*\*$/, '').trim();
+    const message = invalidControl.validity.customError
+      ? invalidControl.validationMessage
+      : name ? `${name} belum diisi atau tidak valid.` : invalidControl.validationMessage;
+    showToast(message, 'error');
+  }, 0);
+}, true);
 document.addEventListener('submit', event => { if (event.target.id === 'data-form') submitForm(event); if (event.target.id === 'login-form') submitLogin(event); });
 document.querySelector('#mobile-menu').addEventListener('click', () => document.querySelector('#sidebar').classList.toggle('open'));
 document.addEventListener('keydown', event => { if (event.key === 'Escape') modalLayer.hidden = true; });
