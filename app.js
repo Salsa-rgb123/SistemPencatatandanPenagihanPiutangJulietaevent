@@ -16,8 +16,6 @@ Deno.serve(async request => {
   if (request.method === 'OPTIONS') return response(null, 204);
   if (!['GET', 'POST', 'PATCH', 'DELETE'].includes(request.method)) return response(JSON.stringify({ error: 'Method tidak diizinkan.' }), 405);
   if (request.headers.get('apikey') !== SUPABASE_PUBLISHABLE_KEY) return response(JSON.stringify({ error: 'API key tidak valid.' }), 401);
-  const authorization = request.headers.get('authorization') || '';
-  if (!/^Bearer\s+\S+$/i.test(authorization)) return response(JSON.stringify({ error: 'Login admin diperlukan.' }), 401);
 
   const requestUrl = new URL(request.url);
   const pathParts = requestUrl.pathname.split('/').filter(Boolean);
@@ -29,7 +27,6 @@ Deno.serve(async request => {
   const query = requestUrl.search;
   const headers = new Headers({
     apikey: SUPABASE_PUBLISHABLE_KEY,
-    Authorization: authorization,
     Prefer: request.headers.get('prefer') || 'return=representation'
   });
   const body = ['GET', 'DELETE'].includes(request.method) ? undefined : await request.text();
