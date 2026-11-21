@@ -16,6 +16,7 @@ Demo: https://link-demo-aplikasi-anda.com
 - Invoice serta struk bukti pembayaran per termin dalam PDF; struk pembayaran dapat diunduh atau dibagikan lewat menu berbagi perangkat
 - Nomor WhatsApp klien dan pengingat pembayaran melalui WhatsApp
 - Login admin Supabase Auth dengan pembatasan API dan database
+- Validasi data wajib dengan notifikasi merah; formulir tidak dapat dilanjutkan jika data belum lengkap
 - Dashboard ringkasan dengan grafik bulanan piutang, pembayaran, dan kerusakan barang
 - Update status secara dinamis melalui antarmuka aplikasi
 
@@ -37,6 +38,8 @@ Demo: https://link-demo-aplikasi-anda.com
 6. Layani folder `frontend/` melalui hosting web/localhost (bukan membuka file HTML langsung) dan buka aplikasinya. Login memakai email/password akun admin Supabase.
 
 Kebijakan database membatasi operasi ke JWT dengan `app_metadata.role = 'admin'`. Jangan berikan metadata role ini kepada akun lain. Pastikan Signup dinonaktifkan atau akun tanpa role admin tetap tidak dapat membaca data.
+
+Akses langsung tanpa login tidak diaktifkan karena dapat membuka data klien dan keuangan kepada siapa saja. Login email/password dan pembatasan admin tetap berlaku.
 
 ## Alur transaksi
 
