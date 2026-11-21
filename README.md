@@ -2,10 +2,6 @@
 
 Julieta Suite adalah aplikasi manajemen event dan keuangan Julieta Event & Décor. Admin utama: **Salsabila Dwi Putri**. Aplikasi menggunakan tema soft lilac/lavender, judul serif klasik, antarmuka Inter, dan ukuran teks untuk keterbacaan desktop maupun ponsel.
 
-## Demo Aplikasi
-
-Demo: https://link-demo-aplikasi-anda.com
-
 ## Fitur Utama
 
 - Manajemen data klien
@@ -15,31 +11,19 @@ Demo: https://link-demo-aplikasi-anda.com
 - Smart deposit tagihan dengan penanda jatuh tempo, jaminan properti, inventaris kerusakan, kalkulasi potongan otomatis, dan perhitungan refund
 - Invoice serta struk bukti pembayaran per termin dalam PDF; struk pembayaran dapat diunduh atau dibagikan lewat menu berbagi perangkat
 - Nomor WhatsApp klien dan pengingat pembayaran melalui WhatsApp
-- Login admin Supabase Auth dengan pembatasan API dan database
+- Dashboard langsung terbuka dengan akses tanpa login
 - Validasi data wajib dengan notifikasi merah; formulir tidak dapat dilanjutkan jika data belum lengkap
 - Dashboard ringkasan dengan grafik bulanan piutang, pembayaran, dan kerusakan barang
 - Update status secara dinamis melalui antarmuka aplikasi
 
-## Persiapan database dan admin
+## Persiapan Supabase dan mengisi data
 
-1. Jalankan seluruh [backend/supabase.sql](./backend/supabase.sql) di SQL Editor project Supabase. Skrip ini menambahkan data jasa/zona, durasi event, kolom rincian inventaris kerusakan pada jaminan, dan kebijakan akses admin. Jika versi sebelumnya sudah pernah dijalankan, jalankan kembali skrip terbaru satu kali untuk menerapkan perubahan skema.
-2. Di Supabase Authentication, nonaktifkan pendaftaran publik dan buat satu akun admin dengan email serta password yang kuat.
-3. Berikan role admin hanya ke akun tersebut melalui SQL Editor Supabase (ganti email dengan alamat admin):
+1. Buka project Supabase yang benar. Aplikasi saat ini memakai project ref `gvxysxktqexuhrfkikjv` (`https://gvxysxktqexuhrfkikjv.supabase.co`).
+2. Di **SQL Editor**, pilih **New query**, salin **seluruh isi** [backend/supabase.sql](./backend/supabase.sql), lalu tekan **Run**. SQL menyiapkan/memperbarui skema, memastikan kolom `paid_at` tersedia sebelum dipakai, dan mengaktifkan akses baca/tulis publik. SQL tidak menghapus data yang sudah ada.
+3. Layani folder `frontend/` lewat localhost/hosting web (jangan membuka `index.html` sebagai file langsung), lalu muat ulang aplikasi. Tidak perlu deploy Edge Function. Jika kelima tabel aplikasi masih kosong dan belum pernah dipakai, dashboard menginisialisasi tiga transaksi contoh Vanesha (lunas/refund), Bintang (pembayaran sebagian), dan Nadira (termin terlambat) sekali saja. Begitu ada data atau perubahan manual, seed tidak akan dijalankan kembali, termasuk setelah data dihapus.
+4. Isi data lewat menu aplikasi. Mulai dari **Klien**, lalu buat **Event**, **Piutang/Invoice**, termin di **Smart Deposit**, dan jaminan jika diperlukan.
 
-   ```sql
-   update auth.users
-   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
-   where email = 'admin@julieta.com';
-   ```
-
-   Query harus mengubah satu akun. Jika tidak ada baris yang berubah, pastikan akun admin sudah dibuat dan alamat email benar.
-4. Deploy ulang fungsi Supabase `julieta-api` menggunakan [backend/app.js](./backend/app.js). API meneruskan access token login ke Supabase; secret `service_role` tidak digunakan di browser.
-5. Sesuaikan alamat, WhatsApp, dan email resmi pada `STUDIO_PROFILE` di `frontend/script.js`. PDF struk memakai jsPDF dari CDN, sehingga browser perlu akses internet untuk memuat library tersebut.
-6. Layani folder `frontend/` melalui hosting web/localhost (bukan membuka file HTML langsung) dan buka aplikasinya. Login memakai email/password akun admin Supabase.
-
-Kebijakan database membatasi operasi ke JWT dengan `app_metadata.role = 'admin'`. Jangan berikan metadata role ini kepada akun lain. Pastikan Signup dinonaktifkan atau akun tanpa role admin tetap tidak dapat membaca data.
-
-Akses langsung tanpa login tidak diaktifkan karena dapat membuka data klien dan keuangan kepada siapa saja. Login email/password dan pembatasan admin tetap berlaku.
+**Peringatan:** akses publik sengaja dibuka untuk kebutuhan tugas. Siapa pun yang mengetahui alamat aplikasi/API dapat membaca, menambah, mengubah, dan menghapus data. Jangan gunakan konfigurasi ini untuk data pribadi atau sensitif.
 
 ## Alur transaksi
 
@@ -78,11 +62,10 @@ Berbagi PDF tetap memerlukan tindakan admin untuk memilih penerima dan mengirim 
 
 ## Cara Menjalankan
 
-1. Pastikan environment dan koneksi Supabase sudah aktif.
-2. Jalankan backend di folder `backend/`.
-3. Buka folder `frontend/` dan akses aplikasi melalui browser.
-4. Pastikan API key dan konfigurasi database sudah sesuai.
+1. Pastikan skrip Supabase di atas sudah berhasil dijalankan pada project yang dipakai aplikasi.
+2. Jalankan folder `frontend/` melalui server lokal atau hosting web.
+3. Buka aplikasi di browser; frontend mengakses REST API Supabase secara langsung.
 
 ## Catatan
 
-Perubahan SQL memperbarui hak akses yang sebelumnya mengizinkan akses publik. Data finansial baru hanya dapat dikelola setelah akun admin dengan role yang benar dibuat.
+Frontend terhubung langsung ke Supabase REST API. Perubahan skema dan fungsi inisialisasi dilakukan melalui [backend/supabase.sql](./backend/supabase.sql); jalankan SQL tersebut sebelum membuka aplikasi.
