@@ -12,22 +12,7 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <section class="auth-screen" id="auth-screen" aria-label="Login admin">
-    <section class="auth-card" aria-labelledby="auth-title">
-      <div class="auth-brand-mark" aria-hidden="true">✿</div>
-      <p class="auth-kicker">BY JULIETA EVENT &amp; DÉCOR</p>
-      <h1 id="auth-title">Julieta Suite</h1>
-      <p class="auth-subtitle">Ruang kerja eksklusif untuk mengelola event dan keuangan studio.</p>
-      <form id="login-form">
-        <label class="auth-field"><span>Email admin</span><input name="email" type="email" autocomplete="username" required placeholder="admin@julieta.com"></label>
-        <label class="auth-field"><span>Password</span><input name="password" type="password" autocomplete="current-password" required placeholder="Masukkan password"></label>
-        <p class="auth-error" id="auth-error" role="alert" hidden></p>
-        <button class="button primary auth-submit" type="submit">Masuk ke workspace</button>
-      </form>
-      <p class="auth-footnote">Akses khusus administrator · akun dikelola melalui Supabase Auth</p>
-    </section>
-  </section>
-  <div class="app-shell" id="app-shell" hidden>
+  <div class="app-shell" id="app-shell">
     <aside class="sidebar" id="sidebar">
       <a class="brand" href="#dashboard" aria-label="Julieta Suite dashboard">
         <span class="brand-mark" aria-hidden="true">
@@ -45,7 +30,7 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="sidebar-note"><span class="note-flower">✿</span><p>Setiap detail kecil membuat momen besar terasa istimewa.</p></div>
-        <div class="profile"><div class="avatar">SP</div><div><strong id="admin-name">Salsabila Dwi Putri</strong><small>Administrator</small></div><button class="profile-more" data-action="logout" aria-label="Keluar dari sistem" title="Keluar">↪</button></div>
+        <div class="profile"><div class="avatar">SP</div><div><strong id="admin-name">Salsabila Dwi Putri</strong><small>Akses terbuka</small></div></div>
       </div>
     </aside>
 
