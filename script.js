@@ -1,7 +1,6 @@
 const SUPABASE_URL = 'https://gvxysxktqexuhrfkikjv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_COVBM_Uc-UaQsywiDVtc9g_46fqORa1';
-const SUPABASE_API_URL = `${SUPABASE_URL}/functions/v1/julieta-api`;
-const SUPABASE_AUTH_URL = `${SUPABASE_URL}/auth/v1`;
+const SUPABASE_API_URL = `${SUPABASE_URL}/rest/v1`;
 const SERVICE_OPTIONS = [
   ['event-organizer', 'Event Organizer (EO)', 45000000],
   ['decoration', 'Decoration', 120000000],
@@ -44,88 +43,13 @@ const DAMAGE_INVENTORY = [
   ['direction-sign', 'Papan Penunjuk Arah / Direction Sign Board Akrilik', 250000, 'buah']
 ].map(([id, name, price, unit, fractional = false]) => ({ id, name, price, unit, fractional }));
 const IDR = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
-const state = { view: 'dashboard', data: null, search: '', filter: 'all', adminName: 'Salsabila Dwi Putri', session: readAuthSession() };
+const state = { view: 'dashboard', data: null, search: '', filter: 'all', adminName: 'Salsabila Dwi Putri' };
 const page = document.querySelector('#page-content');
 const modalLayer = document.querySelector('#modal-layer');
 const names = { dashboard: 'Ringkasan', receivables: 'Piutang', deposits: 'Smart deposit & Refund', events: 'Event', clients: 'Klien' };
 
 function useData() { return state.data; }
 function escapeHtml(value = '') { return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]); }
-function readAuthSession() {
-  try {
-    const session = JSON.parse(sessionStorage.getItem('julieta-auth-session') || 'null');
-    return session?.access_token && session?.refresh_token ? session : null;
-  } catch { return null; }
-}
-function saveAuthSession(session) {
-  const next = { ...session, expires_at: session.expires_at || Math.floor(Date.now() / 1000) + Number(session.expires_in || 3600) };
-  try { sessionStorage.setItem('julieta-auth-session', JSON.stringify(next)); }
-  catch { throw new Error('Sesi tidak dapat disimpan di browser ini. Izinkan penyimpanan sesi lalu coba lagi.'); }
-  state.session = next;
-}
-function clearAuthSession() {
-  try { sessionStorage.removeItem('julieta-auth-session'); } catch { /* Browser storage may be disabled. */ }
-  state.session = null;
-  state.data = null;
-}
-function setAuthenticatedView(authenticated) {
-  document.querySelector('#auth-screen').hidden = authenticated;
-  document.querySelector('#app-shell').hidden = !authenticated;
-}
-function showLogin(message = '') {
-  clearAuthSession();
-  modalLayer.hidden = true;
-  document.querySelector('#login-form [name="password"]').value = '';
-  setAuthenticatedView(false);
-  const error = document.querySelector('#auth-error');
-  error.textContent = message;
-  error.hidden = !message;
-}
-async function authRequest(path, body) {
-  const response = await fetch(`${SUPABASE_AUTH_URL}${path}`, {
-    method: 'POST',
-    headers: { apikey: SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(result.msg || result.message || result.error_description || 'Autentikasi gagal. Periksa email dan password.');
-    error.status = response.status;
-    throw error;
-  }
-  return result;
-}
-async function refreshAuthSession() {
-  if (!state.session) throw new Error('Sesi login telah berakhir. Silakan masuk kembali.');
-  try {
-    const session = await authRequest('/token?grant_type=refresh_token', { refresh_token: state.session.refresh_token });
-    saveAuthSession(session);
-    return session;
-  } catch (error) {
-    clearAuthSession();
-    throw new Error(error.message || 'Sesi admin berakhir. Silakan masuk kembali.');
-  }
-}
-async function ensureFreshAuthSession() {
-  if (!state.session) throw new Error('Login admin diperlukan.');
-  if (Number(state.session.expires_at) <= Math.floor(Date.now() / 1000) + 60) await refreshAuthSession();
-  return state.session;
-}
-async function signOut() {
-  let message = 'Anda telah keluar dari Julieta Suite.';
-  if (state.session?.access_token) {
-    try {
-      const response = await fetch(`${SUPABASE_AUTH_URL}/logout`, {
-        method: 'POST',
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${state.session.access_token}` }
-      });
-      if (!response.ok) message = 'Sesi lokal sudah dihapus, tetapi token sesi belum dapat dicabut dari Supabase.';
-    } catch {
-      message = 'Sesi lokal sudah dihapus, tetapi server tidak dapat dihubungi untuk mencabut token.';
-    }
-  }
-  showLogin(message);
-}
 function greetingByTime(date = new Date()) {
   const hour = date.getHours();
   if (hour >= 4 && hour < 11) return 'Selamat pagi';
@@ -946,7 +870,13 @@ function securityDepositPanel() {
     const client = clientFor(event);
     const refund = Math.max(0, Number(deposit.amount) - Number(deposit.damage_deduction || 0));
     const bank = [client?.bank_name, client?.bank_account_name, client?.bank_account_number].filter(Boolean).join(' · ');
-    return `<tr><td><strong>${escapeHtml(event?.name || 'Event')}</strong><br><span class="cell-sub">${escapeHtml(client?.name || 'Klien')} · ${dateLong(deposit.deposited_at)}</span></td><td>${money(deposit.amount)}</td><td>${money(deposit.damage_deduction || 0)}<br><span class="cell-sub">${escapeHtml(damageNotesFor(deposit))}</span></td><td><strong>${money(refund)}</strong></td><td>${escapeHtml(bank || 'Rekening refund belum diisi')}</td><td>${badge(deposit.status)}${deposit.refunded_at ? `<br><span class="cell-sub">${dateLong(deposit.refunded_at)}</span>` : ''}</td><td>${deposit.status === 'Dikembalikan' ? whatsappRefundButton(deposit) : `<button class="button small primary" data-action="process-refund" data-id="${deposit.id}">Hitung & refund</button>`}</td></tr>`;
+    const action = deposit.status === 'Dikembalikan'
+      ? whatsappRefundButton(deposit)
+      : deposit.status === 'Menunggu bayaran'
+        ? `<button class="button small primary" data-action="receive-security-deposit" data-id="${deposit.id}">Tandai diterima</button>`
+        : `<button class="button small primary" data-action="process-refund" data-id="${deposit.id}">Hitung & refund</button>`;
+    const dateLabel = deposit.status === 'Menunggu bayaran' ? 'Dicatat' : 'Diterima';
+    return `<tr><td><strong>${escapeHtml(event?.name || 'Event')}</strong><br><span class="cell-sub">${escapeHtml(client?.name || 'Klien')} · ${dateLabel} ${dateLong(deposit.deposited_at)}</span></td><td>${money(deposit.amount)}</td><td>${money(deposit.damage_deduction || 0)}<br><span class="cell-sub">${escapeHtml(damageNotesFor(deposit))}</span></td><td><strong>${deposit.status === 'Menunggu bayaran' ? '—' : money(refund)}</strong></td><td>${escapeHtml(bank || 'Rekening refund belum diisi')}</td><td>${badge(deposit.status)}${deposit.refunded_at ? `<br><span class="cell-sub">${dateLong(deposit.refunded_at)}</span>` : ''}</td><td>${action}</td></tr>`;
   }).join('');
   return `<section class="panel deposit-ledger"><div class="panel-header"><div><h2>Jaminan properti & refund</h2><p>Catat uang jaminan event, potongan kerusakan secara transparan, dan sisa refund ke rekening klien.</p></div>${actionButton('Catat jaminan', 'security-deposit', true)}</div>${tablePanel(['EVENT & KLIEN', 'JAMINAN', 'POTONGAN & CATATAN', 'NILAI REFUND', 'REKENING KLIEN', 'STATUS', 'AKSI'], rows)}</section>`;
 }
@@ -1161,12 +1091,10 @@ async function submitForm(event) {
 }
 async function supabaseRequest(table, query = '', options = {}) {
   const { body, ...requestOptions } = options;
-  const session = await ensureFreshAuthSession();
   const response = await fetch(`${SUPABASE_API_URL}/${table}${query ? `?${query}` : ''}`, {
     ...requestOptions,
     headers: {
       apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${session.access_token}`,
       Accept: 'application/json',
       'Content-Type': 'application/json',
       Prefer: options.prefer || 'return=representation',
@@ -1200,6 +1128,21 @@ async function deleteRecord(table, id) {
       ? 'Data ini masih dipakai oleh entitas lain. Hapus relasi terkait terlebih dahulu.'
       : error.message || 'Data gagal dihapus.';
     showToast(message);
+  }
+}
+async function markSecurityDepositReceived(id) {
+  const deposit = state.data.securityDeposits.find(item => item.id === id);
+  if (!deposit || deposit.status !== 'Menunggu bayaran') return;
+  try {
+    await supabaseRequest('security_deposits', `id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: { status: 'Tersimpan', damage_notes: null, deposited_at: new Date().toISOString().slice(0, 10) }
+    });
+    state.data = await loadData();
+    render();
+    showToast('Jaminan ditandai sudah diterima.');
+  } catch (error) {
+    showToast(error.message || 'Status jaminan gagal diperbarui.', 'error');
   }
 }
 async function saveFormData(payload) {
@@ -1317,39 +1260,21 @@ async function publishInvoice(id) {
 function renderConnectionError(message) {
   page.innerHTML = `<section class="connection-state"><span class="brand-mark" aria-hidden="true">✿</span><div class="eyebrow">KONEKSI SUPABASE</div><h1>Dashboard belum terhubung</h1><p>${escapeHtml(message)}</p><button class="button primary" data-action="retry-connection">Coba lagi</button></section>`;
 }
+async function initDefaultDemoData() {
+  const hasExistingState = Object.values(state.data || {}).some(value => Array.isArray(value) && value.length > 0);
+  const result = await supabaseRequest('rpc/init_default_demo_data', '', {
+    method: 'POST',
+    body: { p_allow_seed: !hasExistingState }
+  });
+  return result?.seeded === true;
+}
 async function connectDashboard() {
-  if (!state.session) { showLogin(); return; }
   try {
     state.data = await loadData();
-    setAuthenticatedView(true);
+    if (await initDefaultDemoData()) state.data = await loadData();
     render();
   } catch (error) {
-    if (!state.session || error.status === 401 || error.status === 403) { showLogin('Sesi login tidak berlaku atau akun tidak memiliki akses. Silakan masuk kembali.'); return; }
-    setAuthenticatedView(true);
     renderConnectionError(error instanceof TypeError ? 'Tidak dapat menghubungi Supabase. Periksa koneksi internet dan pengaturan project.' : error.message);
-  }
-}
-async function submitLogin(event) {
-  event.preventDefault();
-  const form = event.target;
-  const button = form.querySelector('button[type="submit"]');
-  const error = document.querySelector('#auth-error');
-  error.hidden = true;
-  button.disabled = true;
-  button.textContent = 'Memverifikasi...';
-  try {
-    const session = await authRequest('/token?grant_type=password', {
-      email: new FormData(form).get('email').trim(),
-      password: new FormData(form).get('password')
-    });
-    saveAuthSession(session);
-    await connectDashboard();
-  } catch (failure) {
-    error.textContent = failure.message || 'Login gagal. Periksa email dan password.';
-    error.hidden = false;
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Masuk ke workspace';
   }
 }
 function actionClick(action, id, table) {
@@ -1360,8 +1285,8 @@ function actionClick(action, id, table) {
   if (action === 'deposit') newDepositForm();
   if (action === 'security-deposit') newSecurityDepositForm();
   if (action === 'process-refund') newRefundForm(id);
+  if (action === 'receive-security-deposit') markSecurityDepositReceived(id);
   if (action === 'edit-client') newClientForm(id);
-  if (action === 'logout') signOut();
   if (action === 'retry-connection') connectDashboard();
   if (action === 'publish-invoice') publishInvoice(id);
   if (action === 'delete-row') deleteRecord(table, id);
@@ -1398,11 +1323,10 @@ document.addEventListener('invalid', event => {
     showToast(message, 'error');
   }, 0);
 }, true);
-document.addEventListener('submit', event => { if (event.target.id === 'data-form') submitForm(event); if (event.target.id === 'login-form') submitLogin(event); });
+document.addEventListener('submit', event => { if (event.target.id === 'data-form') submitForm(event); });
 document.querySelector('#mobile-menu').addEventListener('click', () => document.querySelector('#sidebar').classList.toggle('open'));
 document.addEventListener('keydown', event => { if (event.key === 'Escape') modalLayer.hidden = true; });
 (async function init() {
   document.querySelector('#today-label').textContent = new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date());
-  if (state.session) await connectDashboard();
-  else showLogin();
+  await connectDashboard();
 })();
